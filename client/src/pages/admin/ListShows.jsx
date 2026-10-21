@@ -1,38 +1,17 @@
-import React, { useEffect, useState } from 'react'
-import { dummyShowsData } from '../../assets/assets'
 import Loading from '../../components/Loading'
+import ErrorMessage from '../../components/ErrorMessage'
 import Title from '../../components/admin/Title'
+import { currency } from '../../lib/currency'
+import useApi from '../../hooks/useApi'
 
 const ListShows = () => {
+    const { data, error, loading, reload } = useApi('/api/admin/all-shows', { auth: true })
+    const shows = data?.shows || []
 
-    const currency = import.meta.env.VITE_CURRENCY || '$'
+    if (loading) return <Loading />
+    if (error) return <ErrorMessage message="Could not load shows." onRetry={reload} />
 
-    const [shows, setShows] = useState([])
-    const [loading, setLoading] = useState(true)
-
-    const getAllShows = async () => {
-        try {
-            setShows([{
-                movie: dummyShowsData[0],
-                showDateTime: "2025-06-30T02:30:00.000Z",
-                showPrice: 59,
-                occupiedSeats: {
-                    A1: "user_1",
-                    B1: "user_2",
-                    C1: "user_3"
-                }
-            }])
-            setLoading(false)
-        } catch (error) {
-            console.error(error)
-        }
-    }
-
-    useEffect(() => {
-        getAllShows()
-    }, [])
-
-    return !loading ? (
+    return (
         <>
             <Title text1="List" text2="Shows" />
 
@@ -42,24 +21,29 @@ const ListShows = () => {
                         <tr className="bg-primary/20 text-left text-white">
                             <th className="p-2 font-medium pl-5">Movie Name</th>
                             <th className="p-2 font-medium">Show Time</th>
-                            <th className="p-2 font-medium">Total Bookings</th>
+                            <th className="p-2 font-medium">Base Price</th>
+                            <th className="p-2 font-medium">Seats Sold</th>
                             <th className="p-2 font-medium">Earnings</th>
                         </tr>
                     </thead>
                     <tbody className="text-sm font-light">
-                        {shows.map((show, index) => (
-                            <tr key={index} className="border-b border-primary/10 bg-primary/5 even:bg-primary/10">
+                        {shows.length === 0 && (
+                            <tr><td colSpan="5" className="p-5 text-gray-400">No shows yet.</td></tr>
+                        )}
+                        {shows.map((show) => (
+                            <tr key={show._id} className="border-b border-primary/10 bg-primary/5 even:bg-primary/10">
                                 <td className="p-2 min-w-45 pl-5">{show.movie.title}</td>
                                 <td className="p-2">{new Date(show.showDateTime).toLocaleString()}</td>
-                                <td className="p-2">{Object.keys(show.occupiedSeats).length}</td>
-                                <td className="p-2">{currency} {Object.keys(show.occupiedSeats).length * show.showPrice}</td>
+                                <td className="p-2">{currency}{show.showPrice}</td>
+                                <td className="p-2">{show.totalBookings}</td>
+                                <td className="p-2">{currency}{show.earnings}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
         </>
-    ) : <Loading />
+    )
 }
 
 export default ListShows
