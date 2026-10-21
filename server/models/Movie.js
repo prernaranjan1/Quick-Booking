@@ -13,19 +13,19 @@ const movieSchema = new mongoose.Schema(
         },
         overview: {
             type: String,
-            required: true
+            default: ""
         },
         poster_path: {
             type: String,
-            required: true
+            default: ""
         },
         backdrop_path: {
             type: String,
-            required: true
+            default: ""
         },
         release_date: {
             type: String,
-            required: true
+            default: ""
         },
         original_language: {
             type: String
@@ -39,15 +39,19 @@ const movieSchema = new mongoose.Schema(
         },
         casts: {
             type: Array,
-            required: true
+            default: []
         },
         vote_average: {
             type: Number,
-            required: true
+            default: 0
+        },
+        vote_count: {
+            type: Number,
+            default: 0
         },
         runtime: {
             type: Number,
-            required: true
+            default: 0
         }
     },
     {

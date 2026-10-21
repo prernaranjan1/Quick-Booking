@@ -1,6 +1,7 @@
 import express from "express";
 import { getAuth } from "@clerk/express";
-import { isAdminUser } from "../middleware/auth.js";
+import { isAdminUser, protectAdmin } from "../middleware/auth.js";
+import { getDashboardData, getAllShows, getAllBookings } from "../controllers/adminControllers.js";
 
 const adminRouter = express.Router();
 
@@ -22,5 +23,9 @@ adminRouter.get("/is-admin", async (req, res) => {
         });
     }
 });
+
+adminRouter.get("/dashboard", protectAdmin, getDashboardData);
+adminRouter.get("/all-shows", protectAdmin, getAllShows);
+adminRouter.get("/all-bookings", protectAdmin, getAllBookings);
 
 export default adminRouter;

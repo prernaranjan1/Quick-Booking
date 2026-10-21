@@ -7,14 +7,25 @@ import { serve } from 'inngest/express';
 import { inngest, functions } from './inngest/index.js';
 import showRouter from './routes/showRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
+import bookingRouter from './routes/bookingRoutes.js';
+import chatRouter from './routes/chatRoutes.js';
+import { razorpayWebhook } from './controllers/bookingControllers.js';
 
 const app = express();
 
 // Database
 await connectDB();
 
+// Razorpay webhook needs the raw body to check its signature,
+// so it is registered before express.json()
+app.post(
+    '/api/booking/razorpay-webhook',
+    express.raw({ type: 'application/json', limit: '1mb' }),
+    razorpayWebhook
+);
+
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 app.use(cors());
 
 // Inngest route
@@ -35,6 +46,8 @@ app.get('/', (req, res) => {
 });
 app.use('/api/show', showRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/booking', bookingRouter);
+app.use('/api/chat', chatRouter);
 
 // Export for Vercel
 export default app;
