@@ -1,8 +1,21 @@
 import AdminNavbar from '../../components/admin/AdminNavbar'
 import AdminSidebar from '../../components/admin/AdminSidebar'
-import { Outlet } from 'react-router-dom'
+import Loading from '../../components/Loading'
+import useIsAdmin from '../../hooks/useIsAdmin'
+import { Navigate, Outlet } from 'react-router-dom'
 
 const Layout = () => {
+  const isAdmin = useIsAdmin()
+
+  if (isAdmin === null) {
+    return <Loading />
+  }
+
+  // Non-admins are sent home; the server also rejects their admin API calls
+  if (!isAdmin) {
+    return <Navigate to="/" replace />
+  }
+
   return (
     <>
       <AdminNavbar />
