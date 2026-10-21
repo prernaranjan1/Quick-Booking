@@ -14,7 +14,6 @@ import ListBookings from './pages/admin/ListBookings'
 import { Toaster } from 'react-hot-toast'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import './App.css'
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react'
 
 
 const App = () => {
@@ -24,19 +23,6 @@ const App = () => {
   return (
     <>
       <Toaster />
-
-      {!isAdminRoute && (
-        <header className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <Show when="signed-out">
-            <SignInButton />
-            <SignUpButton />
-          </Show>
-
-          <Show when="signed-in">
-            <UserButton />
-          </Show>
-        </header>
-      )}
 
       {!isAdminRoute && <Navbar />}
 

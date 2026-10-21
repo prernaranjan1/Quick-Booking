@@ -1,10 +1,51 @@
-import { Inngest } from "inngest";
+import { Inngest, NonRetriableError } from "inngest";
 import User from "../models/user.js";
 
 // Create an Inngest client
 export const inngest = new Inngest({
     id: "movie-ticket-booking",
 });
+
+// Build the MongoDB user document from a Clerk user payload
+const buildUserData = (data) => {
+    const {
+        id,
+        first_name,
+        last_name,
+        email_addresses = [],
+        primary_email_address_id,
+        image_url,
+    } = data;
+
+    const primaryEmail = (
+        email_addresses.find((email) => email.id === primary_email_address_id) ??
+        email_addresses[0]
+    )?.email_address;
+
+    // email is required on the model, so retrying would fail forever
+    if (!primaryEmail) {
+        throw new NonRetriableError(`Clerk user ${id} has no email address`);
+    }
+
+    return {
+        _id: id,
+        email: primaryEmail,
+        name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || "Clerk User",
+        image: image_url ?? "",
+    };
+};
+
+// Upsert so retries and duplicate/out-of-order webhooks don't fail
+const upsertUser = (data) => {
+    const userData = buildUserData(data);
+
+    return User.findByIdAndUpdate(userData._id, userData, {
+        upsert: true,
+        new: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+    });
+};
 
 // Create user in MongoDB when Clerk creates a user
 const syncUserCreation = inngest.createFunction(
@@ -13,24 +54,7 @@ const syncUserCreation = inngest.createFunction(
         triggers: [{ event: "clerk/user.created" }],
     },
     async ({ event }) => {
-        const {
-            id,
-            first_name,
-            last_name,
-            email_addresses,
-            image_url,
-        } = event.data;
-
-        const primaryEmail = email_addresses?.[0]?.email_address ?? "";
-
-        const userData = {
-            _id: id,
-            email: primaryEmail,
-            name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || "Clerk User",
-            image: image_url ?? "",
-        };
-
-        await User.create(userData);
+        await upsertUser(event.data);
     }
 );
 
@@ -54,24 +78,7 @@ const syncUserUpdation = inngest.createFunction(
         triggers: [{ event: "clerk/user.updated" }],
     },
     async ({ event }) => {
-        const {
-            id,
-            first_name,
-            last_name,
-            email_addresses,
-            image_url,
-        } = event.data;
-
-        const primaryEmail = email_addresses?.[0]?.email_address ?? "";
-
-        const userData = {
-            _id: id,
-            email: primaryEmail,
-            name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || "Clerk User",
-            image: image_url ?? "",
-        };
-
-        await User.findByIdAndUpdate(id, userData, { new: true, runValidators: true });
+        await upsertUser(event.data);
     }
 );
 

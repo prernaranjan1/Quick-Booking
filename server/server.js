@@ -5,6 +5,7 @@ import connectDB from './configs/db.js';
 import { clerkMiddleware } from '@clerk/express';
 import { serve } from 'inngest/express';
 import { inngest, functions } from './inngest/index.js';
+import showRouter from './routes/showRoutes.js';
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use(clerkMiddleware());
 app.get('/', (req, res) => {
     res.send('Server is Live!');
 });
+app.use('/api/show', showRouter);
 
 // Export for Vercel
 export default app;
@@ -43,3 +45,6 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`Server listening at http://localhost:${port}`);
     });
 }
+app.get('/test', (req, res) => {
+    res.send('TEST WORKING');
+});
