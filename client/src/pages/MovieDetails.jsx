@@ -4,16 +4,16 @@ import { dummyDateTimeData, dummyShowsData } from '../assets/assets'
 import BlurCircle from '../components/BlurCircle'
 import { DateSelect } from '../components/DataSelect'
 import MovieCard from '../components/MovieCard'
-import Loading from '../components/Loading'
+import MovieNotFound from '../components/MovieNotFound'
 
 const MovieDetails = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const show = dummyShowsData.find((item) => item._id === id)
 
- if (!show) {
-  return <Loading />
-}
+  if (!show) {
+    return <MovieNotFound />
+  }
 
   return (
     <div className="px-6 md:px-16 lg:px-40 pt-30 md:pt-50">

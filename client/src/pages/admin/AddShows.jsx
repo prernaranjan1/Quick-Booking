@@ -154,7 +154,7 @@ const AddShows = () => {
 
                         <div className="flex items-center border border-gray-600 rounded-lg overflow-hidden">
                             <span className="px-4 text-gray-400">
-                                $
+                                {currency}
                             </span>
 
                             <input

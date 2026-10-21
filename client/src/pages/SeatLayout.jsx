@@ -8,7 +8,7 @@ import {
 } from '../assets/assets'
 import isoTimeFormat from '../lib/isoTimeFormat'
 import BlurCircle from '../components/BlurCircle'
-import Loading from '../components/Loading'
+import MovieNotFound from '../components/MovieNotFound'
 import toast from 'react-hot-toast'
 
 const SeatLayout = () => {
@@ -83,7 +83,7 @@ const SeatLayout = () => {
 
   // Movie not found
   if (!movie) {
-    return <Loading />
+    return <MovieNotFound />
   }
 
   return (

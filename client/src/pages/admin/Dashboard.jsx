@@ -7,7 +7,7 @@ import BlurCircle from '../../components/BlurCircle'
 
 const Dashboard = () => {
 
-    const currency = import.meta.env.VITE_CURRENCY
+    const currency = import.meta.env.VITE_CURRENCY || '$'
 
     const [dashboardData, setDashboardData] = useState({
         totalBookings: 0,
