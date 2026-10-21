@@ -6,6 +6,7 @@ import { clerkMiddleware } from '@clerk/express';
 import { serve } from 'inngest/express';
 import { inngest, functions } from './inngest/index.js';
 import showRouter from './routes/showRoutes.js';
+import adminRouter from './routes/adminRoutes.js';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.get('/', (req, res) => {
     res.send('Server is Live!');
 });
 app.use('/api/show', showRouter);
+app.use('/api/admin', adminRouter);
 
 // Export for Vercel
 export default app;
