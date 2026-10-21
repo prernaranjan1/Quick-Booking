@@ -1,5 +1,6 @@
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import Chatbot from './components/Chatbot'
 import Home from './pages/Home'
 import Movies from './pages/Movies'
 import MovieDetails from './pages/MovieDetails'
@@ -46,6 +47,7 @@ const App = () => {
       </Routes>
 
       {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <Chatbot />}
     </>
   )
 }

@@ -8,6 +8,7 @@ import { inngest, functions } from './inngest/index.js';
 import showRouter from './routes/showRoutes.js';
 import adminRouter from './routes/adminRoutes.js';
 import bookingRouter from './routes/bookingRoutes.js';
+import chatRouter from './routes/chatRoutes.js';
 import { razorpayWebhook } from './controllers/bookingControllers.js';
 
 const app = express();
@@ -46,6 +47,7 @@ app.get('/', (req, res) => {
 app.use('/api/show', showRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/booking', bookingRouter);
+app.use('/api/chat', chatRouter);
 
 // Export for Vercel
 export default app;
