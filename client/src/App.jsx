@@ -6,6 +6,8 @@ import MovieDetails from './pages/MovieDetails'
 import SeatLayout from './pages/SeatLayout'
 import MyBookings from './pages/MyBookings'
 import Favorite from './pages/Favorite'
+import Checkout from './pages/Checkout'
+import Ticket from './pages/Ticket'
 import Layout from './pages/admin/Layout'
 import Dashboard from './pages/admin/Dashboard'
 import AddShows from './pages/admin/AddShows'
@@ -31,6 +33,8 @@ const App = () => {
         <Route path="/movies" element={<Movies />} />
         <Route path="/movies/:id" element={<MovieDetails />} />
         <Route path="/movies/:id/:date" element={<SeatLayout />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/ticket/:bookingId" element={<Ticket />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/favorite" element={<Favorite />} />
         <Route path="/admin/*" element={<Layout />}>
