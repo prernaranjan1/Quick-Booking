@@ -2,7 +2,7 @@ import { assets } from '../assets/assets'
 
 const Footer = () => {
   return (
-    <footer className="px-6 md:px-16 lg:px-24 xl:px-44 pt-20 pb-8 bg-[#181818] text-gray-400">
+    <footer className="px-6 md:px-16 lg:px-24 xl:px-44 pt-20 pb-8 bg-[#181818] text-gray-400 print:hidden">
       <div className="flex flex-col md:flex-row justify-between gap-10">
 
         {/* Logo + Description */}

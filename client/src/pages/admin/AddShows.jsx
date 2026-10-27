@@ -1,37 +1,34 @@
-import React, { useEffect, useState } from 'react'
-import { CalendarClockIcon, StarIcon } from 'lucide-react'
+import { useState } from 'react'
+import { useAuth } from '@clerk/react'
+import { CheckIcon, StarIcon, XIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { dummyShowsData } from '../../assets/assets'
 import Loading from '../../components/Loading'
+import ErrorMessage from '../../components/ErrorMessage'
 import Title from '../../components/admin/Title'
 import { kConverter } from '../../lib/kConverter'
+import { currency } from '../../lib/currency'
+import tmdbImage from '../../lib/tmdbImage'
+import { apiRequest } from '../../lib/api'
+import useApi from '../../hooks/useApi'
 
 const AddShows = () => {
+    const { getToken } = useAuth()
+    const { data, error, loading, reload } = useApi('/api/show/now-playing', { auth: true })
+    const nowPlayingMovies = data?.movies || []
 
-    const currency = import.meta.env.VITE_CURRENCY || '$'
-
-    const [nowPlayingMovies, setNowPlayingMovies] = useState([])
     const [selectedMovie, setSelectedMovie] = useState(null)
-    const [dateTimeSelection, setDateTimeSelection] = useState({})
+    const [showDateTimes, setShowDateTimes] = useState([])
     const [dateTimeInput, setDateTimeInput] = useState('')
     const [showPrice, setShowPrice] = useState('')
-    const [addedShows, setAddedShows] = useState([])
-
-    const fetchNowPlayingMovies = async () => {
-        setNowPlayingMovies(dummyShowsData)
-    }
+    const [isSaving, setIsSaving] = useState(false)
 
     const handleDateTimeAdd = () => {
-        if (!selectedMovie) {
-            toast.error('Please select a movie first')
-            return
-        }
-
         if (!dateTimeInput) {
             toast.error('Please choose a date and time')
             return
         }
 
+        // datetime-local is in the admin's local time; store as an exact instant
         const selectedDate = new Date(dateTimeInput)
 
         if (Number.isNaN(selectedDate.getTime())) {
@@ -39,27 +36,27 @@ const AddShows = () => {
             return
         }
 
+        if (selectedDate.getTime() <= Date.now()) {
+            toast.error('Show time must be in the future')
+            return
+        }
+
         const isoDateTime = selectedDate.toISOString()
-        const dateKey = selectedDate.toISOString().split('T')[0]
 
-        setDateTimeSelection((prev) => {
-            const existingTimes = prev[dateKey] || []
+        if (showDateTimes.includes(isoDateTime)) {
+            toast.error('This time slot is already added')
+            return
+        }
 
-            if (existingTimes.some((time) => time === isoDateTime)) {
-                toast.error('This time slot is already added')
-                return prev
-            }
-
-            return {
-                ...prev,
-                [dateKey]: [...existingTimes, isoDateTime]
-            }
-        })
-
+        setShowDateTimes((prev) => [...prev, isoDateTime].sort())
         setDateTimeInput('')
     }
 
-    const handleAddShow = () => {
+    const removeDateTime = (isoDateTime) => {
+        setShowDateTimes((prev) => prev.filter((time) => time !== isoDateTime))
+    }
+
+    const handleAddShow = async () => {
         if (!selectedMovie) {
             toast.error('Select a movie before creating a show')
             return
@@ -72,36 +69,42 @@ const AddShows = () => {
             return
         }
 
-        const totalSlots = Object.values(dateTimeSelection).reduce(
-            (sum, times) => sum + times.length,
-            0
-        )
-
-        if (totalSlots === 0) {
+        if (showDateTimes.length === 0) {
             toast.error('Add at least one date and time slot')
             return
         }
 
-        const newShow = {
-            _id: `${selectedMovie.id}-${Date.now()}`,
-            movie: selectedMovie,
-            showDateTime: Object.values(dateTimeSelection).flat()[0],
-            showPrice: numericPrice,
-            occupiedSeats: {}
-        }
+        setIsSaving(true)
 
-        setAddedShows((prev) => [newShow, ...prev])
-        setSelectedMovie(null)
-        setShowPrice('')
-        setDateTimeSelection({})
-        toast.success('Show added successfully')
+        try {
+            const result = await apiRequest('/api/show/add', {
+                method: 'POST',
+                token: await getToken(),
+                body: {
+                    movieId: selectedMovie.id,
+                    showPrice: numericPrice,
+                    showDateTimes
+                }
+            })
+
+            toast.success(result.message)
+            setSelectedMovie(null)
+            setShowPrice('')
+            setShowDateTimes([])
+        } catch (err) {
+            toast.error(err.message)
+        } finally {
+            setIsSaving(false)
+        }
     }
 
-    useEffect(() => {
-        fetchNowPlayingMovies()
-    }, [])
+    if (loading) return <Loading />
 
-    return nowPlayingMovies.length > 0 ? (
+    if (error) {
+        return <ErrorMessage message={`Could not load now playing movies: ${error.message}`} onRetry={reload} />
+    }
+
+    return (
         <>
             <Title text1="Add" text2="Shows" />
             <p className="mt-10 text-lg font-medium">Now Playing Movies</p>
@@ -111,79 +114,69 @@ const AddShows = () => {
                     {nowPlayingMovies.map((movie) => (
                         <div
                             key={movie.id}
-                            className={`relative max-w-40 cursor-pointer group-hover:not-hover:opacity-40 hover:-translate-y-1 transition duration-300 ${selectedMovie?.id === movie.id ? 'ring-2 ring-primary rounded-lg' : ''}`}
+                            className="relative max-w-40 cursor-pointer group-hover:not-hover:opacity-40 hover:-translate-y-1 transition duration-300"
                             onClick={() => setSelectedMovie(movie)}
                         >
                             <div className="relative rounded-lg overflow-hidden">
-                                <img src={movie.poster_path} alt={movie.title} className="w-full object-cover brightness-90" />
+                                <img src={tmdbImage(movie.poster_path, 'w342')} alt={movie.title} className="w-full object-cover brightness-90" />
                                 <div className="text-sm flex items-center justify-between p-2 bg-black/70 w-full absolute bottom-0 left-0">
                                     <p className="flex items-center gap-1 text-gray-400">
                                         <StarIcon className="w-4 h-4 text-primary fill-primary" />
-                                        {movie.vote_average.toFixed(1)}
+                                        {(movie.vote_average || 0).toFixed(1)}
                                     </p>
                                     <p className="text-gray-300">{kConverter(movie.vote_count)} Votes</p>
                                 </div>
                             </div>
+
+                            {selectedMovie?.id === movie.id && (
+                                <div className="absolute top-2 right-2 flex items-center justify-center bg-primary h-6 w-6 rounded">
+                                    <CheckIcon className="w-4 h-4 text-white" strokeWidth={2.5} />
+                                </div>
+                            )}
+
+                            <p className="font-medium truncate mt-1">{movie.title}</p>
+                            <p className="text-gray-400 text-sm">{movie.release_date}</p>
                         </div>
                     ))}
                 </div>
             </div>
-            {selectedMovie && (
-                <div className="mt-8 rounded-lg border border-primary/20 bg-primary/5 p-4 max-w-xl">
-                    <p className="text-sm uppercase tracking-[0.2em] text-gray-400">Selected movie</p>
-                    <div className="mt-3 flex items-center gap-4">
-                        <img src={selectedMovie.poster_path} alt={selectedMovie.title} className="h-24 w-18 rounded-md object-cover" />
-                        <div>
-                            <h3 className="text-lg font-medium">{selectedMovie.title}</h3>
-                            <p className="text-sm text-gray-400">{selectedMovie.release_date}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Show Details */}
             <div className="mt-8 max-w-5xl">
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {/* Show Price */}
                     <div>
                         <label className="block text-sm font-medium mb-2">
-                            Show Price
+                            Base Show Price (Silver)
                         </label>
 
                         <div className="flex items-center border border-gray-600 rounded-lg overflow-hidden">
-                            <span className="px-4 text-gray-400">
-                                {currency}
-                            </span>
-
+                            <span className="px-4 text-gray-400">{currency}</span>
                             <input
                                 type="number"
+                                min="1"
                                 placeholder="Enter show price"
                                 value={showPrice}
                                 onChange={(e) => setShowPrice(e.target.value)}
                                 className="w-full bg-transparent px-2 py-3 outline-none"
                             />
                         </div>
+                        <p className="text-xs text-gray-400 mt-2">
+                            Gold is 1.2×, Premium 1.5×. Weekend, evening and busy-show surcharges are added automatically.
+                        </p>
                     </div>
 
-                    {/* Date & Time */}
                     <div>
                         <label className="block text-sm font-medium mb-2">
                             Select Date and Time
                         </label>
 
                         <div className="flex items-center border border-gray-600 rounded-lg overflow-hidden">
-
                             <input
                                 type="datetime-local"
                                 value={dateTimeInput}
-                                onChange={(e) =>
-                                    setDateTimeInput(e.target.value)
-                                }
+                                onChange={(e) => setDateTimeInput(e.target.value)}
                                 className="flex-1 bg-transparent px-3 py-3 outline-none"
                             />
-
                             <button
                                 type="button"
                                 onClick={handleDateTimeAdd}
@@ -191,43 +184,40 @@ const AddShows = () => {
                             >
                                 Add Time
                             </button>
-
                         </div>
                     </div>
-
                 </div>
 
-                {/* Add Show */}
+                {showDateTimes.length > 0 && (
+                    <div className="mt-6">
+                        <p className="text-sm font-medium mb-2">Selected show times</p>
+                        <div className="flex flex-wrap gap-2">
+                            {showDateTimes.map((time) => (
+                                <span key={time} className="flex items-center gap-2 border border-primary/40 px-3 py-1 rounded text-sm">
+                                    {new Date(time).toLocaleString()}
+                                    <XIcon
+                                        className="w-4 h-4 text-red-400 cursor-pointer"
+                                        onClick={() => removeDateTime(time)}
+                                    />
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="mt-6 flex justify-start">
                     <button
                         type="button"
                         onClick={handleAddShow}
-                        className="bg-primary px-7 py-3 rounded-lg text-sm font-medium hover:bg-primary/80 transition"
+                        disabled={isSaving}
+                        className="bg-primary px-7 py-3 rounded-lg text-sm font-medium hover:bg-primary/80 transition disabled:opacity-50"
                     >
-                        Add Show
+                        {isSaving ? 'Adding...' : 'Add Show'}
                     </button>
                 </div>
-
             </div>
-
-            {addedShows.length > 0 && (
-                <div className="mt-8 max-w-xl">
-                    <p className="text-lg font-medium mb-3">Recently Added Shows</p>
-                    <div className="space-y-3">
-                        {addedShows.map((show) => (
-                            <div key={show._id} className="rounded-md border border-primary/20 bg-primary/5 p-3 flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="font-medium">{show.movie.title}</p>
-                                    <p className="text-xs text-gray-400">{new Date(show.showDateTime).toLocaleString()}</p>
-                                </div>
-                                <p className="text-sm font-medium">{currency} {show.showPrice}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </>
-    ) : <Loading />
+    )
 }
 
 export default AddShows

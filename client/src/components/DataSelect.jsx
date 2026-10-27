@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import BlurCircle from './BlurCircle'
+import { parseDateKey } from '../lib/showDates'
 
 export const DateSelect = ({ dateTime, id }) => {
   const navigate = useNavigate()
@@ -18,16 +19,15 @@ export const DateSelect = ({ dateTime, id }) => {
 
   const handleNext = () => {
     setStartIndex((prev) =>
-      Math.min(dates.length - 4, prev + 1)
+      Math.max(0, Math.min(dates.length - 4, prev + 1))
     )
   }
 
   const handleBookNow = () => {
     if (!id || !selectedDate) return
 
-    navigate(`/movies/${id}/date`, {
-      state: { selectedDate }
-    })
+    navigate(`/movies/${id}/${selectedDate}`)
+    scrollTo(0, 0)
   }
 
   return (
@@ -57,7 +57,7 @@ export const DateSelect = ({ dateTime, id }) => {
             <span className="flex gap-4">
               {visibleDates.map((date) => {
                 const isSelected = date === selectedDate
-                const dateObject = new Date(date)
+                const dateObject = parseDateKey(date)
 
                 return (
                   <button

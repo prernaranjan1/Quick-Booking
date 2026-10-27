@@ -1,25 +1,48 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { PlayCircleIcon, Heart } from 'lucide-react'
-import { dummyDateTimeData, dummyShowsData } from '../assets/assets'
 import BlurCircle from '../components/BlurCircle'
 import { DateSelect } from '../components/DataSelect'
 import MovieCard from '../components/MovieCard'
+import Loading from '../components/Loading'
 import MovieNotFound from '../components/MovieNotFound'
+import ErrorMessage from '../components/ErrorMessage'
+import useApi from '../hooks/useApi'
+import tmdbImage from '../lib/tmdbImage'
+import { groupShowsByDate } from '../lib/showDates'
 
 const MovieDetails = () => {
   const navigate = useNavigate()
   const { id } = useParams()
-  const show = dummyShowsData.find((item) => item._id === id)
+  const { data, error, loading, reload } = useApi(`/api/show/movie/${encodeURIComponent(id)}`)
+  const { data: allData } = useApi('/api/show/all')
 
-  if (!show) {
+  if (loading) {
+    return <Loading />
+  }
+
+  if (error?.status === 404) {
     return <MovieNotFound />
   }
+
+  if (error || !data) {
+    return (
+      <div className="pt-40">
+        <ErrorMessage message="Could not load this movie." onRetry={reload} />
+      </div>
+    )
+  }
+
+  const show = data.movie
+  const dateTime = groupShowsByDate(data.shows)
+  const otherMovies = (allData?.movies || [])
+    .filter((movie) => String(movie.tmdbId) !== String(id))
+    .slice(0, 4)
 
   return (
     <div className="px-6 md:px-16 lg:px-40 pt-30 md:pt-50">
       <div className="flex flex-col md:flex-row gap-8 max-w-6xl mx-auto">
         <img
-          src={show.poster_path}
+          src={tmdbImage(show.poster_path, 'w500')}
           alt={show.title}
           className="max-md:mx-auto rounded-xl h-104 max-w-70 object-cover"
         />
@@ -36,18 +59,22 @@ const MovieDetails = () => {
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
-            <span>{new Date(show.release_date).getFullYear()}</span>
+            {show.release_date && <span>{new Date(show.release_date).getFullYear()}</span>}
             <span>•</span>
-            <span>{show.genres.map((genre) => genre.name).slice(0, 3).join(' | ')}</span>
-            <span>•</span>
-            <span>{Math.floor(show.runtime / 60)}h {show.runtime % 60}m</span>
+            <span>{(show.genres || []).map((genre) => genre.name).slice(0, 3).join(' | ')}</span>
+            {show.runtime > 0 && (
+              <>
+                <span>•</span>
+                <span>{Math.floor(show.runtime / 60)}h {show.runtime % 60}m</span>
+              </>
+            )}
           </div>
 
           <p className="max-w-xl text-gray-300">{show.overview}</p>
 
           <div className="flex items-center gap-3 mt-2 text-sm text-gray-300">
             <span className="font-medium">Rating:</span>
-            <span>{show.vote_average.toFixed(1)} / 10</span>
+            <span>{(show.vote_average || 0).toFixed(1)} / 10</span>
           </div>
         </div>
       </div>
@@ -58,63 +85,84 @@ const MovieDetails = () => {
           Watch Trailer
         </button>
 
-       <button
-  type="button"
-  onClick={() => {
-    document.getElementById('dateSelect')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }}
-  className="px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-md font-medium cursor-pointer active:scale-95"
->
-  Buy Tickets
-</button>
+        <button
+          type="button"
+          onClick={() => {
+            document.getElementById('dateSelect')?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+          }}
+          className="px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-md font-medium cursor-pointer active:scale-95"
+        >
+          Buy Tickets
+        </button>
 
         <button className="bg-gray-700 p-2.5 rounded-full transition cursor-pointer active:scale-95">
           <Heart className="w-5 h-5" />
         </button>
       </div>
 
-      <p className="text-lg font-medium mt-20">
-        Your Favorite Cast
-      </p>
+      {show.casts?.length > 0 && (
+        <>
+          <p className="text-lg font-medium mt-20">
+            Your Favorite Cast
+          </p>
 
-      <div className="overflow-x-auto no-scrollbar mt-8 pb-4">
-        <div className="flex items-center gap-4 w-max px-4">
-          {show.casts.slice(0, 12).map((cast, index) => (
-            <div
-              key={index}
-              className="flex flex-col items-center text-center"
-            >
-              <img
-                src={cast.profile_path}
-                alt=""
-                className="rounded-full h-20 md:h-20 aspect-square object-cover"
-              />
+          <div className="overflow-x-auto no-scrollbar mt-8 pb-4">
+            <div className="flex items-center gap-4 w-max px-4">
+              {show.casts.slice(0, 12).map((cast, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col items-center text-center"
+                >
+                  {cast.profile_path ? (
+                    <img
+                      src={tmdbImage(cast.profile_path, 'w185')}
+                      alt=""
+                      className="rounded-full h-20 md:h-20 aspect-square object-cover"
+                    />
+                  ) : (
+                    <div className="rounded-full h-20 aspect-square bg-gray-700" />
+                  )}
 
-              <p className="font-medium text-xs mt-3">
-                {cast.name}
-              </p>
+                  <p className="font-medium text-xs mt-3">
+                    {cast.name}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        </>
+      )}
+
+      {Object.keys(dateTime).length > 0 ? (
+        <DateSelect dateTime={dateTime} id={id} />
+      ) : (
+        <div id="dateSelect" className="pt-30">
+          <p className="p-8 bg-primary/10 border border-primary/20 rounded-lg text-gray-300">
+            No upcoming shows for this movie.
+          </p>
         </div>
-      </div>
-      <DateSelect dateTime={dummyDateTimeData} id={id} />
+      )}
 
-      <p className="text-lg font-medium mt-20 mb-8">
-        You May Also Like
-      </p>
+      {otherMovies.length > 0 && (
+        <>
+          <p className="text-lg font-medium mt-20 mb-8">
+            You May Also Like
+          </p>
 
-      <div className="flex flex-wrap max-sm:justify-center gap-8">
-        {dummyShowsData.slice(0, 4).map((movie, index) => (
-          <MovieCard key={index} movie={movie} />
-        ))}
-      </div>
+          <div className="flex flex-wrap max-sm:justify-center gap-8">
+            {otherMovies.map((movie) => (
+              <MovieCard key={movie.tmdbId} movie={movie} />
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="flex justify-center mt-20">
         <button
-          onClick={() => {navigate('/movies');scrollTo(0,0)}}
+          onClick={() => { navigate('/movies'); scrollTo(0, 0) }}
           className="px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-md font-medium cursor-pointer"
         >
           Show more

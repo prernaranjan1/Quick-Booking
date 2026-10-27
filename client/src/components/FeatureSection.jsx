@@ -2,13 +2,12 @@ import { ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import BlurCircle from './BlurCircle'
 import MovieCard from './MovieCard'
-import { dummyShowsData } from '../assets/assets'
+import useApi from '../hooks/useApi'
 
 const FeaturedSection = () => {
   const navigate = useNavigate()
-  const featuredMovies = dummyShowsData
-    .slice(0, 4)
-    .map((booking) => booking.show?.movie || booking.movie || booking)
+  const { data, loading } = useApi('/api/show/all')
+  const featuredMovies = (data?.movies || []).slice(0, 4)
 
   return (
     <div className="px-6 md:px-16 lg:px-24 xl:px-44 overflow-hidden">
@@ -29,11 +28,17 @@ const FeaturedSection = () => {
       </div>
 
       <div>
-        <div className="flex flex-wrap max-sm:justify-center gap-8 mt-8">
-          {featuredMovies.map((movie) => (
-            <MovieCard key={movie._id} movie={movie} />
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-gray-400 mt-8">Loading movies...</p>
+        ) : featuredMovies.length === 0 ? (
+          <p className="text-gray-400 mt-8">No shows are scheduled right now.</p>
+        ) : (
+          <div className="flex flex-wrap max-sm:justify-center gap-8 mt-8">
+            {featuredMovies.map((movie) => (
+              <MovieCard key={movie.tmdbId} movie={movie} />
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex justify-center mt-20">
   <button
